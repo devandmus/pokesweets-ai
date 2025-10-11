@@ -1,0 +1,51 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pokesweets-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./recipes.db
+      - POKEAPI_BASE_URL=https://pokeapi.co/api/v2
+      - CORS_ORIGINS=http://localhost:5173
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+      - backend-data:/app/data
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - pokesweets-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pokesweets-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev -- --host
+    networks:
+      - pokesweets-network
+    depends_on:
+      - backend
+
+volumes:
+  backend-data:
+    driver: local
+
+networks:
+  pokesweets-network:
+    driver: bridge
