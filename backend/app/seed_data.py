@@ -74,13 +74,22 @@ def seed_database(db: Session = None):
                 continue
             
             # Create recipe object (excluding 'id' and 'created_at' as they will be auto-generated)
+            # Convert list fields to JSON strings for SQLite storage
+            ingredients = recipe_data.get("ingredients")
+            if isinstance(ingredients, list):
+                ingredients = json.dumps(ingredients)
+
+            instructions = recipe_data.get("instructions")
+            if isinstance(instructions, list):
+                instructions = json.dumps(instructions)
+
             recipe = Recipe(
                 pokemon_id=recipe_data.get("pokemon_id"),
                 pokemon_name=recipe_data.get("pokemon_name"),
                 recipe_title=recipe_data.get("recipe_title"),
                 description=recipe_data.get("description"),
-                ingredients=recipe_data.get("ingredients"),  # Already JSON string
-                instructions=recipe_data.get("instructions"),  # Already JSON string
+                ingredients=ingredients,
+                instructions=instructions,
                 difficulty=recipe_data.get("difficulty"),
                 prep_time=recipe_data.get("prep_time"),
                 thematic_connection=recipe_data.get("thematic_connection"),
