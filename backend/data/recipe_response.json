@@ -1,0 +1,1 @@
+{"detail":{"message":"Recipe generation failed","errors":["Recipe generation error: 'AIMessage' object has no attribute 'response_metadata'","Recipe missing required fields: ingredients, instructions"]}}

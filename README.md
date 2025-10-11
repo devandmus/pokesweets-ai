@@ -106,6 +106,17 @@ docker-compose up --build
 - Backend API: http://localhost:8000
 - API Docs: http://localhost:8000/docs
 
+### 🍪 Recetas Predeterminadas
+
+La base de datos se inicializa automáticamente con 4 recetas predeterminadas (incluyendo imágenes):
+- **Torta Flama Charmander**
+- **Alfajores Eléctricos Pikachu**
+- **Flan Burbuja de Squirtle**
+- **Galletas Bulbasaur Verdes**
+
+Estas recetas se cargan solo en el primer inicio, cuando la base de datos está vacía.
+Los datos se encuentran en `backend/data/recipe_*.json` e incluyen las imágenes en formato base64.
+
 ## 📖 Uso
 
 1. Selecciona un Pokémon desde el buscador

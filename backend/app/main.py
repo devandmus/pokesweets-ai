@@ -1,8 +1,12 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .config import settings
-from .database import init_db
+from .database import init_db, SessionLocal
 from .routes import api_router
+from .seed_data import seed_database
+from .utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -26,6 +30,16 @@ async def startup_event():
     """Initialize database on startup."""
     init_db()
     print("✅ Database initialized")
+    
+    # Seed database with default recipes if empty
+    db = SessionLocal()
+    try:
+        seed_database(db)
+    except Exception as e:
+        logger.error(f"Error seeding database: {e}")
+    finally:
+        db.close()
+    
     print(f"✅ CORS enabled for: {settings.cors_origins_list}")
 
 
