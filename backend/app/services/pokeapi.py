@@ -112,10 +112,10 @@ class PokeAPIService:
     def extract_attributes(self, pokemon_id: int) -> Dict[str, Any]:
         """
         Extract relevant attributes for recipe generation.
-        
+
         Args:
             pokemon_id: Pokemon ID
-            
+
         Returns:
             Dict with extracted attributes
         """
@@ -123,27 +123,57 @@ class PokeAPIService:
         pokemon_data = self.get_pokemon(pokemon_id)
         if not pokemon_data:
             return {}
-        
+
         # Get species data for additional attributes
         species_data = self.get_pokemon_species(pokemon_id)
-        
-        # Extract types
-        types = [t["type"]["name"] for t in pokemon_data.get("types", [])]
-        
-        # Extract color from species
-        color = species_data.get("color", {}).get("name", "unknown") if species_data else "unknown"
-        
-        # Extract habitat
-        habitat = species_data.get("habitat", {}).get("name", "unknown") if species_data else "unknown"
-        
-        # Extract flavor text (description)
-        flavor_texts = species_data.get("flavor_text_entries", []) if species_data else []
+
+        # Extract types (with protection against None)
+        types_data = pokemon_data.get("types") or []
+        types = []
+        for t in types_data:
+            try:
+                type_name = t.get("type", {}).get("name") if isinstance(t, dict) and t.get("type") else None
+                if type_name:
+                    types.append(type_name)
+            except AttributeError:
+                continue
+
+        # Extract color from species (with protection against None)
+        color = "unknown"
+        if species_data:
+            color_obj = species_data.get("color")
+            if isinstance(color_obj, dict):
+                color = color_obj.get("name", "unknown")
+
+        # Extract habitat (with protection against None)
+        habitat = "unknown"
+        if species_data:
+            habitat_obj = species_data.get("habitat")
+            if isinstance(habitat_obj, dict):
+                habitat = habitat_obj.get("name", "unknown")
+
+        # Extract flavor text (description) (with protection against None)
+        flavor_texts = species_data.get("flavor_text_entries") or [] if species_data else []
         description = ""
         for entry in flavor_texts:
-            if entry.get("language", {}).get("name") == "en":
-                description = entry.get("flavor_text", "").replace("\n", " ").replace("\f", " ")
-                break
-        
+            if isinstance(entry, dict):
+                lang_obj = entry.get("language")
+                if isinstance(lang_obj, dict) and lang_obj.get("name") == "en":
+                    flavor_text = entry.get("flavor_text", "").replace("\n", " ").replace("\f", " ")
+                    if flavor_text:
+                        description = flavor_text
+                        break
+
+        # Extract sprite (with protection against nested None)
+        sprite = ""
+        sprites_obj = pokemon_data.get("sprites")
+        if isinstance(sprites_obj, dict):
+            other_obj = sprites_obj.get("other", {})
+            if isinstance(other_obj, dict):
+                official_artwork = other_obj.get("official-artwork", {})
+                if isinstance(official_artwork, dict):
+                    sprite = official_artwork.get("front_default", "")
+
         return {
             "id": pokemon_data.get("id"),
             "name": pokemon_data.get("name"),
@@ -153,7 +183,7 @@ class PokeAPIService:
             "description": description,
             "height": pokemon_data.get("height", 0),
             "weight": pokemon_data.get("weight", 0),
-            "sprite": pokemon_data.get("sprites", {}).get("other", {}).get("official-artwork", {}).get("front_default", "")
+            "sprite": sprite
         }
     
     def search_pokemon(self, query: str, limit: int = 20) -> list[Dict[str, Any]]:

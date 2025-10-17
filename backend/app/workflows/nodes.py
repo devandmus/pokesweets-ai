@@ -49,24 +49,24 @@ def build_prompt_node(state: RecipeState) -> RecipeState:
 
 def generate_recipe_node(state: RecipeState) -> RecipeState:
     """Generate recipe using LLM."""
-    pokemon_data = state.get("pokemon_data", {})
-    preferences = state.get("user_preferences", {})
-    
+    pokemon_data = state.get("pokemon_data") or {}
+    preferences = state.get("user_preferences") or {}
+
     if not pokemon_data:
         state["errors"].append("No Pokemon data available for recipe generation")
         return state
-    
+
     try:
         recipe_data = llm_service.generate_recipe(pokemon_data, preferences)
         state["raw_recipe"] = recipe_data
-        
+
         if "error" in recipe_data:
             state["errors"].append(f"Recipe generation error: {recipe_data['error']}")
-            
+
     except Exception as e:
         logger.error(f"Error in generate_recipe_node: {e}")
         state["errors"].append(f"Error generating recipe: {str(e)}")
-    
+
     return state
 
 
@@ -141,6 +141,38 @@ def save_recipe_node(state: RecipeState) -> RecipeState:
         logger.error(f"Error in save_recipe_node: {e}")
         state["errors"].append(f"Error saving recipe: {str(e)}")
     
+    return state
+
+
+def refine_recipe_node(state: RecipeState) -> RecipeState:
+    """Refine an incomplete recipe based on validation errors."""
+    pokemon_data = state.get("pokemon_data", {})
+    raw_recipe = state.get("raw_recipe", {})
+    errors = state.get("errors", [])
+
+    if not raw_recipe or not errors:
+        state["errors"].append("No recipe to refine or no errors to fix")
+        return state
+
+    try:
+        state["refinement_count"] += 1
+        refined_recipe = llm_service.refine_recipe(
+            incomplete_recipe=raw_recipe,
+            pokemon_data=pokemon_data,
+            errors=errors,
+            recipe_id=state.get("recipe_id")
+        )
+
+        if refined_recipe:
+            state["raw_recipe"] = refined_recipe
+            # Clear previous errors and set as re-validated
+            state["errors"] = []
+            state["validated_recipe"] = refined_recipe
+
+    except Exception as e:
+        logger.error(f"Error in refine_recipe_node for Pokemon {pokemon_data.get('name')}: {e}")
+        state["errors"].append(f"Error refining recipe: {str(e)}")
+
     return state
 
 

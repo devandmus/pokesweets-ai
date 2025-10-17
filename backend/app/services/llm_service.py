@@ -1,7 +1,7 @@
 from langchain_openai import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from ..config import settings
 from .usage_tracker import usage_tracker
 from ..utils.logger import setup_logger
@@ -40,14 +40,21 @@ class LLMService:
         pref_text = ""
         dessert_pref = ""
         if preferences:
-            if preferences.get("dietary"):
-                pref_text += f"Restricciones dietéticas: {preferences['dietary']}. "
-            if preferences.get("complexity"):
-                pref_text += f"Nivel de complejidad: {preferences['complexity']}. "
-            if preferences.get("dessert_type"):
-                dessert_pref = f"Crea específicamente una {preferences['dessert_type']}."
-            elif preferences.get("dessert_description"):
-                dessert_pref = f"Descripción del postre deseado: {preferences['dessert_description']}."
+            dietary = preferences.get("dietary")
+            if dietary and str(dietary).lower() != 'none':
+                pref_text += f"Restricciones dietéticas: {dietary}. "
+
+            complexity = preferences.get("complexity")
+            if complexity and str(complexity).lower() != 'none':
+                pref_text += f"Nivel de complejidad: {complexity}. "
+
+            dessert_type = preferences.get("dessert_type")
+            if dessert_type and str(dessert_type).lower() != 'none':
+                dessert_pref = f"Crea específicamente una {dessert_type}."
+            else:
+                dessert_description = preferences.get("dessert_description")
+                if dessert_description and str(dessert_description).lower() != 'none':
+                    dessert_pref = f"Descripción del postre deseado: {dessert_description}."
 
         # Create prompt template
         template = """Eres un chef pastelero creativo especializado en postres temáticos de Pokémon.
@@ -62,13 +69,22 @@ Información del Pokémon:
 {preferences}
 {dessert_preference}
 
+INSTRUCCIONES para generar la receta (Chain-of-Thought):
+
+Piensa paso a paso aplicando el siguiente proceso de razonamiento:
+
+1. **Análisis del Pokémon:** Identifica características clave (tipos: {types}, color: {color}, hábitat: {habitat}). ¿Cómo traducir esto a sabores, texturas y presentaciones culinarias? (Ej: tipos fuego podrían sugerir sabores calientes/dulces como canela o chile).
+
+2. **Inspiración Temática:** Basado en el análisis, crea conexiones conceptuales. ¿Qué postre reflejaría la apariencia y personalidad de {name}? Considera elementos visuales (colores, formas) y simbólicos (tipo elemental).
+
+3. **Diseño de Receta:** Estructura básica: postre principal, decoraciones, dificultades basadas en complejidad de elementos temáticos. Asegura que sea ejecutable con ingredientes chileno-comunes.
+
+4. **Validación Interna:** Chequea coherencia - ¿La receta honra al Pokémon? ¿Es única y atractiva? ¿Cumple restricciones dietéticas?
+
+Luego de este razonamiento, proporciona ÚNICAMENTE el JSON final con la estructura requerida.
 IMPORTANTE:
 - Responde COMPLETAMENTE en español de América Latina, usando tildes y terminaciones correctas (ej: "postre" no "postre", "tú" no "tu").
-- Crea una receta de postre única inspirada en este Pokémon con los siguientes requisitos:
-  1. Debe reflejar la apariencia visual del Pokémon (colores, formas)
-  2. Incorporar elementos temáticos de su tipo y hábitat
-  3. Ser creativa pero realista y ejecutable
-  4. Utilizar ÚNICAMENTE ingredientes comunes y fáciles de encontrar en supermercados de Chile (frutillas, uvas, manzanas, duraznos, pisco chileno, vino chileno, harina, azúcar, leche, huevos, etc. - evita ingredientes exóticos o difíciles de conseguir)
+- Utilizar ÚNICAMENTE ingredientes comunes y fáciles de encontrar en supermercados de Chile (frutillas, uvas, manzanas, duraznos, pisco chileno, vino chileno, harina, azúcar, leche, huevos, etc. - evita ingredientes exóticos o difíciles de conseguir)
 
 Responde con un objeto JSON con la siguiente estructura:
 {{
@@ -141,6 +157,102 @@ Responde con un objeto JSON con la siguiente estructura:
                 "thematic_connection": ""
             }
     
+    def refine_recipe(
+        self,
+        incomplete_recipe: Dict[str, Any],
+        pokemon_data: Dict[str, Any],
+        errors: List[str],
+        recipe_id: Optional[int] = None
+    ) -> Dict[str, Any]:
+        """
+        Refine an incomplete recipe based on validation errors.
+
+        Args:
+            incomplete_recipe: Recipe with issues
+            pokemon_data: Pokemon attributes
+            errors: List of validation errors
+
+        Returns:
+            Refined recipe dict
+        """
+        template = """Eres un chef pastelero especializado en refinar recipes temáticas de Pokémon.
+
+Recipe incompleta actual:
+{recipe_json}
+
+Errores encontrados:
+{errors}
+
+Información del Pokémon:
+- Nombre: {name}
+- Tipos: {types}
+- Color: {color}
+- Hábitat: {habitat}
+
+INSTRUCCIONES:
+- Corrige los errores específicos mencionados (completa campos faltantes, valida lógica)
+- Mantén la creatividad y conexión temática original
+- Responde ÚNICAMENTE con el JSON completado y corregido usando la estructura exacta
+
+{{
+    "title": "Nombre creativo de la receta",
+    "description": "Descripción breve que conecte el postre con el Pokémon (2-3 frases)",
+    "difficulty": "Fácil|Medio|Difícil",
+    "prep_time": <número en minutos>,
+    "ingredients": [
+        {{"item": "nombre del ingrediente", "quantity": "cantidad", "notes": "notas opcionales"}},
+        ...
+    ],
+    "instructions": [
+        "Instrucción del paso 1",
+        "Instrucción del paso 2",
+        ...
+    ],
+    "presentation": "Cómo presentar/decorar el postre para que parezca el Pokémon",
+    "thematic_connection": "Explicación de cómo la receta refleja las características del Pokémon"
+}}"""
+
+        prompt = ChatPromptTemplate.from_template(template)
+        parser = JsonOutputParser()
+        chain = prompt | self.llm | parser
+
+        import json
+        try:
+            result = chain.invoke({
+                "recipe_json": json.dumps(incomplete_recipe, ensure_ascii=False),
+                "errors": "\n".join([f"- {e}" for e in errors]),
+                "name": pokemon_data.get("name", "").title(),
+                "types": ", ".join(pokemon_data.get("types", [])),
+                "color": pokemon_data.get("color", "unknown"),
+                "habitat": pokemon_data.get("habitat", "unknown")
+            })
+
+            # Smaller token usage estimate for refinement
+            prompt_tokens = 400
+            completion_tokens = 300
+            total_tokens = prompt_tokens + completion_tokens
+
+            if recipe_id:
+                cost = usage_tracker.track_llm_usage(
+                    model="gpt-4o",
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    recipe_id=recipe_id,
+                    pokemon_id=pokemon_data.get("id")
+                )
+
+                result["_usage"] = {
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens,
+                    "cost_usd": cost
+                }
+
+            return result
+        except Exception as e:
+            logger.error(f"Error refining recipe for Pokemon {pokemon_data.get('name')}: {e}")
+            return incomplete_recipe  # Graceful fallback
+
     def generate_image_prompt(self, recipe_data: Dict[str, Any], pokemon_data: Dict[str, Any]) -> str:
         """
         Generate a detailed image prompt for the dessert image.

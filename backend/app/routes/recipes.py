@@ -7,6 +7,28 @@ from ..database import get_db
 from ..models import Recipe
 from ..workflows import generate_recipe_workflow
 
+
+def sanitize_dict(data: Any) -> Any:
+    """
+    Recursively remove None values from dicts and lists.
+
+    Args:
+        data: The data to sanitize
+
+    Returns:
+        Sanitized data with None values removed
+    """
+    if isinstance(data, dict):
+        sanitized = {}
+        for k, v in data.items():
+            if v is not None:
+                sanitized[k] = sanitize_dict(v)
+        return sanitized
+    elif isinstance(data, list):
+        return [sanitize_dict(item) for item in data if item is not None]
+    else:
+        return data
+
 router = APIRouter()
 
 
@@ -46,11 +68,14 @@ async def generate_recipe(request: RecipeGenerateRequest):
     """
     if not (1 <= request.pokemon_id <= 1017):
         raise HTTPException(status_code=400, detail="Pokemon ID must be between 1 and 1017")
-    
+
+    # Sanitize preferences to remove any None values
+    sanitized_preferences = sanitize_dict(request.preferences) if request.preferences else {}
+
     # Execute the LangGraph workflow
     result = await generate_recipe_workflow(
         pokemon_id=request.pokemon_id,
-        preferences=request.preferences,
+        preferences=sanitized_preferences,
         generate_image=request.generate_image
     )
     

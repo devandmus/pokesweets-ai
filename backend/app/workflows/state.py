@@ -15,6 +15,7 @@ class RecipeState(TypedDict):
     recipe_prompt: Optional[str]
     raw_recipe: Optional[Dict[str, Any]]
     validated_recipe: Optional[Dict[str, Any]]
+    refinement_count: int
     
     # Output
     recipe_id: Optional[int]
