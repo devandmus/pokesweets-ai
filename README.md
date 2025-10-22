@@ -2,163 +2,141 @@
 
 Sistema de recomendación de recetas de postres inspiradas en Pokémon, utilizando IA Generativa y LangGraph para orquestar el flujo de trabajo.
 
+## 🚀 Inicio Rápido
+
+### Prerequisitos
+
+Necesitas tener instalado:
+- **Docker Desktop**: [Descargar aquí](https://www.docker.com/products/docker-desktop)
+- **OpenAI API Key**: Sigue los pasos de la siguiente sección
+
+### 1️⃣ Obtener tu OpenAI API Key
+
+1. Ve a [https://platform.openai.com](https://platform.openai.com)
+2. Inicia sesión o crea una cuenta
+3. Ve a **API Keys** en el menú lateral
+4. Haz clic en **"Create new secret key"**
+5. Copia tu API key (empieza con `sk-proj-...`)
+
+> ⚠️ **Importante**: Guarda tu API key en un lugar seguro. No la compartas públicamente.
+
+### 2️⃣ Configurar el Proyecto
+
+1. **Clonar el repositorio**:
+```bash
+git clone <tu-repositorio>
+cd pokesweets-ai
+```
+
+2. **Configurar tu API Key**:
+```bash
+# Copiar el archivo de ejemplo
+cp .env.example .env
+
+# Editar el archivo .env y reemplazar con tu API key
+# En Mac/Linux:
+nano .env
+
+# En Windows:
+notepad .env
+```
+
+Reemplaza `tu-api-key-aqui` con tu API key real:
+```
+OPENAI_API_KEY=sk-proj-TU_API_KEY_REAL_AQUI
+```
+
+### 3️⃣ Levantar la Aplicación con Docker
+
+```bash
+# Iniciar todos los servicios (primera vez puede tardar unos minutos)
+docker-compose up --build
+```
+
+¡Listo! La aplicación estará disponible en:
+- 🎨 **Frontend**: [http://localhost:5173](http://localhost:5173)
+- 🔧 **Backend API**: [http://localhost:8000](http://localhost:8000)
+- 📚 **Documentación API**: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 4️⃣ Usar la Aplicación
+
+1. Abre tu navegador en [http://localhost:5173](http://localhost:5173)
+2. Busca y selecciona tu Pokémon favorito
+3. El sistema generará automáticamente una receta temática
+4. Opcionalmente, genera una imagen del postre con IA
+5. ¡Disfruta de tu receta pokémon!
+
+---
+
+## 📦 Comandos Útiles
+
+```bash
+# Detener la aplicación
+docker-compose down
+
+# Ver logs en tiempo real
+docker-compose logs -f
+
+# Reiniciar servicios
+docker-compose restart
+
+# Limpiar todo (base de datos incluida)
+docker-compose down -v
+```
+
+---
+
 ## 🎯 Características
 
-- 🔍 Búsqueda y selección de Pokémon mediante PokéAPI
-- 🤖 Generación de recetas personalizadas con GPT-4o y LangGraph
-- 🎨 Generación de imágenes con DALL-E 3
+- 🔍 Búsqueda de +1000 Pokémon mediante PokéAPI
+- 🤖 Generación de recetas personalizadas con GPT-4o
+- 🎨 Generación de imágenes con gpt-image-1
 - 💾 Almacenamiento local de recetas en SQLite
+- 📊 Monitoreo de costos y uso de API
 - 🐳 Despliegue completo con Docker Compose
 
-## 🏗️ Arquitectura
+### 🍪 Recetas Predeterminadas
 
-### Stack Tecnológico
+La base de datos incluye 4 recetas de ejemplo:
+- **Torta Flama Charmander**
+- **Alfajores Eléctricos Pikachu**
+- **Flan Burbuja de Squirtle**
+- **Galletas Bulbasaur Verdes**
+
+---
+
+## 🏗️ Stack Tecnológico
 
 **Backend:**
 - Python 3.11
 - FastAPI
 - LangChain + LangGraph
 - SQLAlchemy + SQLite
-- OpenAI API
+- OpenAI API (GPT-4o + gpt-image-1)
 
 **Frontend:**
-- React 18
-- Vite
+- React 18 + Vite
 - Tailwind CSS
 - Axios + React Query
 
-## 🤖 Elección de Modelos LLM
+---
+
+## 🤖 Modelos de IA Utilizados
 
 ### GPT-4o (Generación de Recetas)
-
-**Benchmarks considerados:**
-- **MMLU (Massive Multitask Language Understanding)**: GPT-4o alcanza 88.7% en tareas de conocimiento general
-- **HumanEval (Programación)**: 90.2% en generación de código estructurado (relevante para JSON)
-- **Multilingüismo**: Soporte nativo para español de América Latina con alta calidad
-
-**Razones de selección:**
-1. **Creatividad culinaria**: Temperatura 0.8 permite recetas originales pero coherentes
-2. **Seguimiento de instrucciones**: Excelente cumplimiento de formato JSON estructurado
-3. **Conocimiento cultural**: Comprensión de ingredientes chilenos y latinoamericanos
-4. **Costo-efectividad**: $2.50/M tokens input, $10/M tokens output
-
-**Alternativas evaluadas:**
-- Claude 3.5 Sonnet: Mejor creatividad pero costo 3x superior
-- GPT-3.5 Turbo: Más económico pero calidad inferior en español
-- Llama 3: Gratuito pero requiere infraestructura propia
+- **Temperatura**: 0.8 para balance entre creatividad y coherencia
+- **Costo**: ~$2.50/M tokens input, $10/M tokens output
+- **Ventajas**: Excelente en español, formato JSON estructurado, conocimiento culinario
 
 ### gpt-image-1 (Generación de Imágenes)
+- **Costo**: $0.04/imagen (calidad media)
+- **Ventajas**: Mejor seguimiento de prompts complejos, contexto temático Pokémon + postres
 
-**Características técnicas:**
-- Modelo nativo multimodal basado en GPT-4o
-- Resolución hasta 4096×4096 pixels
-- Lanzado en abril 2025
-
-**Ventajas sobre DALL-E 3:**
-- Mejor seguimiento de prompts complejos
-- Generación de texto más precisa en imágenes
-- Mejor comprensión de contexto temático (Pokémon + postres)
-- Costo competitivo: $0.04/imagen (medium quality)
-
-**Pricing:**
-- Low quality: $0.01/imagen
-- Medium quality: $0.04/imagen (usado por defecto)
-- High quality: $0.17/imagen
-
-### Monitoreo de Costos
-
-El sistema incluye tracking automático de:
-- Tokens consumidos (input/output)
-- Costo por operación
-- Endpoints: `/api/usage/summary`, `/api/usage/history`, `/api/usage/quota`
-
-## 🚀 Inicio Rápido
-
-### Prerequisitos
-
-- Docker y Docker Compose
-- OpenAI API Key
-
-### Configuración
-
-1. Clonar el repositorio:
-```bash
-cd ChatBot_PokeSweets
-```
-
-2. Configurar variables de entorno:
-```bash
-# Backend
-cp backend/.env.example backend/.env
-# Editar backend/.env y agregar tu OPENAI_API_KEY
-
-# Frontend
-cp frontend/.env.example frontend/.env
-```
-
-3. Iniciar los servicios:
-```bash
-docker-compose up --build
-```
-
-4. Acceder a la aplicación:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
-
-### 🍪 Recetas Predeterminadas
-
-La base de datos se inicializa automáticamente con 4 recetas predeterminadas (incluyendo imágenes):
-- **Torta Flama Charmander**
-- **Alfajores Eléctricos Pikachu**
-- **Flan Burbuja de Squirtle**
-- **Galletas Bulbasaur Verdes**
-
-Estas recetas se cargan solo en el primer inicio, cuando la base de datos está vacía.
-Los datos se encuentran en `backend/data/recipe_*.json` e incluyen las imágenes en formato base64.
-
-## 📖 Uso
-
-1. Selecciona un Pokémon desde el buscador
-2. El sistema genera automáticamente una receta temática
-3. Opcionalmente, genera una imagen del postre
-4. Guarda tus recetas favoritas
-
-## 🔄 Flujo de Trabajo LangGraph
-
-```
-START → Fetch Pokémon → Build Prompt → Generate Recipe → 
-Validate → Save Recipe → (Optional) Generate Image → END
-```
-
-## 🛠️ Desarrollo
-
-### Estructura del Proyecto
-
-```
-ChatBot_PokeSweets/
-├── backend/          # API FastAPI con LangGraph
-├── frontend/         # Aplicación React
-├── docker-compose.yml
-└── README.md
-```
-
-### Comandos Útiles
-
-```bash
-# Ver logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-
-# Reiniciar servicios
-docker-compose restart
-
-# Detener servicios
-docker-compose down
-
-# Limpiar volúmenes
-docker-compose down -v
-```
+### 📊 Monitoreo de Costos
+Endpoints disponibles:
+- `/api/usage/summary` - Resumen de uso
+- `/api/usage/history` - Historial de operaciones
+- `/api/usage/quota` - Límites y presupuesto
 
 ## 👥 Integrantes
 

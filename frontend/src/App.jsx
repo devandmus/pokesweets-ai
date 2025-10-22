@@ -1,4 +1,4 @@
-import { useState, useCallback, memo, lazy, Suspense } from 'react';
+import { useState, useCallback, memo, lazy, Suspense, useRef, useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Cake, Loader2, Image as ImageIcon, Sparkles, Zap, Star, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -71,6 +71,10 @@ function AppContent() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showUsageDashboard, setShowUsageDashboard] = useState(false);
 
+  // Refs para scroll automático
+  const dessertSelectorRef = useRef(null);
+  const generatedRecipeRef = useRef(null);
+
   // Use optimized window size hook
   const windowSize = useWindowSize();
 
@@ -97,6 +101,36 @@ function AppContent() {
     setDessertPreferences(null);
     setGeneratedRecipe(null);
   }, []);
+
+  // Scroll automático al paso 2 cuando se selecciona un Pokémon
+  useEffect(() => {
+    if (selectedPokemon && dessertSelectorRef.current) {
+      // Delay para permitir que la animación de entrada se complete
+      const timer = setTimeout(() => {
+        dessertSelectorRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 400);
+
+      return () => clearTimeout(timer);
+    }
+  }, [selectedPokemon]);
+
+  // Scroll automático a la receta generada cuando se crea
+  useEffect(() => {
+    if (generatedRecipe && generatedRecipeRef.current) {
+      // Delay para permitir que la animación de entrada se complete
+      const timer = setTimeout(() => {
+        generatedRecipeRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }, 400);
+
+      return () => clearTimeout(timer);
+    }
+  }, [generatedRecipe]);
 
   const handleGenerateRecipe = useCallback(() => {
     if (selectedPokemon) {
@@ -202,6 +236,7 @@ function AppContent() {
         <AnimatePresence>
           {selectedPokemon && (
             <motion.section
+              ref={dessertSelectorRef}
               className="mb-8"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -318,6 +353,7 @@ function AppContent() {
         <AnimatePresence>
           {generatedRecipe && (
             <motion.section
+              ref={generatedRecipeRef}
               className="mb-8"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
